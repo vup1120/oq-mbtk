@@ -14,10 +14,9 @@ import numpy as np
 import rtree
 import logging
 import configparser
-
-# from mayavi import mlab
 from pyproj import Proj
 
+# from mayavi import mlab
 # from openquake.sub.plotting.tools import plot_mesh
 # from openquake.sub.plotting.tools import plot_mesh_mayavi
 
@@ -41,26 +40,29 @@ from openquake.mbt.tools.smooth3d import Smoothing3D
 from openquake.man.checks.catalogue import load_catalogue
 
 
-def get_catalogue(cat_pickle_fname, treg_filename, label):
+def get_catalogue(cat_pickle_fname, treg_filename=None, label=None):
     """
     :param cat_pickle_fname:
+        Name of the pickle file containing an instance of
+        :class:`openquake.hmtk.seismicity.catalogue.Catalogue`
     :param treg_filename:
+        Name of the file file containing a TR.
     :param label:
+        Label of the tectonic region to be used for the selection of
+        earthquakes
+    :returns:
+        A :class:`openquake.hmtk.seismicity.catalogue.Catalogue` instance
     """
     #
-    # loading TR
-    if treg_filename is not None:
-        f = h5py.File(treg_filename, 'r')
-        tr = f[label][:]
-        f.close()
-    #
     # loading the catalogue
-    # catalogue = pickle.load(open(cat_pickle_fname, 'rb'))
     catalogue = load_catalogue(cat_pickle_fname)
     catalogue.sort_catalogue_chronologically()
     #
     # if a label and a TR are provided we filter the catalogue
     if treg_filename is not None:
+        f = h5py.File(treg_filename, 'r')
+        tr = f[label][:]
+        f.close()
         selector = CatalogueSelector(catalogue, create_copy=False)
         catalogue = selector.select_catalogue(tr)
     return catalogue
@@ -145,7 +147,7 @@ def create_ruptures(mfd, dips, sampling, msr, asprs, float_strike, float_dip,
                     r, values, oms, tspan, hdf5_filename, uniform_fraction,
                     proj, idl, align=False, inslab=False):
     """
-    Create inslab ruptures using an MFD, a time span. The dictionary 'oms'
+    Create inslab ruptures using a MFD and a time span. The dictionary 'oms'
     contains lists of profiles for various values of dip. The ruptures are
     floated on each virtual fault created from a set of profiles.
 
