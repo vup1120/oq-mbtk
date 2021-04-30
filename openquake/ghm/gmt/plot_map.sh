@@ -34,10 +34,10 @@ delete_temporary_folders()
 create_temporary_folders()
 {
     ROOT=$1
-    for i in "/tmp" "/grd" "/fig" "/cpt";
+    for i in "/tmp" "/grd" "/fig" "/cpt" "/grdtopo";
     do
         DIRECTORY=$ROOT$i
-        mkdir $DIRECTORY
+        mkdir -p $DIRECTORY
     done
 }
 
@@ -62,11 +62,13 @@ plot()
     EXTE=$(set_map_extent)
 
     # Input cpt
-    CPTT2="./cpt/gm.cpt"
+    CPTT2=$DATA"/gmt/gm.cpt"
+
     # Input topography
-    GTOPO=$DATA"/gem/gmt/globalGTOPO30.grd"
+    GTOPO=$DATA"/dem/globalGTOPO30.grd"
+    
     # Input bathymetry
-    bat_grd=$DATA"/gem/gmt/ETOPO1_Ice_g_gmt4.grd"
+    bat_grd=$DATA"/dem/etopo1_ice_g_gmt4.grd"
 
     PS=$ROOT"/fig/out.ps"
     PNG=$ROOT"/fig/out.png"
@@ -78,19 +80,17 @@ plot()
     GRDHAZ=$ROOT"/grd/hazard.grd"
     GRDHAZRES=$ROOT"/grd/hazard_resampled.grd"
 
-    bat_grd_cut=$ROOT"/grd/bathymetry_cut.grd"
-    bat_shadow=$ROOT"/grd/bathymetry_shadow.grd"
+    bat_grd_cut=$ROOT"/grdtopo/bathymetry_cut.grd"
+    bat_shadow=$ROOT"/grdtopo/bathymetry_shadow.grd"
 
     # shaded relief
     RES="5k"
 
+    gmt nearneighbor $INPUT -R$EXTE -I$RES -G$GRD0 -V -N4/2 -S20k
+    gmt grdsample $GRD0 -I$RES -R$ext -G$GRDHAZ -r
+
     if $GRADIENT; then
-        rm $ROOT"/grd/*.*"
-        rm $ROOT"/grdtopo/*.*"
-
-        gmt nearneighbor $INPUT -R$EXTE -I$RES -G$GRD0 -V -N4/2 -S20k
-        gmt grdsample $GRD0 -I$RES -R$ext -G$GRDHAZ -r
-
+        rm -f $ROOT"/grdtopo/*.*"
         gmt grdcut $bat_grd -G$GRD0 -R$EXTE -V
         gmt grdgradient $GRD0 -G$bat_grd_cut -Ne0.3 -A45
         gmt grdsample $bat_grd_cut -I$RES -R$EXTE -G$bat_shadow -r
@@ -128,10 +128,13 @@ plot()
     # Plots hazard map
     gmt grdimage $GRDB -R$EXTE $PRO -I$bat_shadow -C$CPTT2 -O -K -nb -V -Q >> $PS
 
+    # Create the geotiff 
+    gdal_translate -of GTiff -co 'TILED=YES' $GRDB ./map.geotiff
+
     # Finishing
     gmt pscoast -R$EXTE $PRO $ORI -Df -EGL,SJ+gwhite -O -K  >> $PS
-    gmt psxy ./../data/gis/islands.gmt -R$EXTE $PRO -Gp500/9:BlightgreyFwhite -O -K -V >> $PS
-    gmt pscoast -R$EXTE $PRO $ORI -Df -A$AREA+as+l -O -K -N1,thinnest,darkgray -Lg-125/-52.7+c0+w5000+f -Wthinnest,black -V >> $PS
+    gmt psxy $DATA/gmt/islands.gmt -R$EXTE $PRO -Gp500/9:BlightgreyFwhite -O -K -V >> $PS
+    gmt pscoast -R$EXTE $PRO $ORI -Df -A$AREA+as+l -O -K -N1 -Lg-125/-52.7+c0+w5000+f -Wthinnest,black -V >> $PS
 
     # Plotting the colorscale
     gmt psscale -Dg95/-52.7+w13c/0.3c+e+h -O -C$CPTT2 -L -S -R$EXTE $PRO >> $PS
@@ -145,9 +148,9 @@ plot()
 }
 
 
-DATA=$HOME"/Data"
-ROOT='/tmp'
-GRADIENT=true
+#DATA=$HOME"/Data"
+#ROOT='/tmp'
+#GRADIENT=true
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -167,4 +170,10 @@ while [ "$1" != "" ]; do
     shift
 done
 
+# FILENAME is the name with the map raw data
+# DATA is the folder containing auxiliary information (e.g. global DEM)
+# ROOT is the folder where to store the map and tmp files 
+# GRADIENT is a flag. When true it adds a shading to the map
+
+echo ">>>>" $FILENAME $DATA $ROOT $GRADIENT
 plot $FILENAME $DATA $ROOT $GRADIENT
