@@ -83,10 +83,12 @@ plot()
     bat_grd_cut=$ROOT"/grdtopo/bathymetry_cut.grd"
     bat_shadow=$ROOT"/grdtopo/bathymetry_shadow.grd"
 
-    # shaded relief
-    RES="5k"
+    # Shaded relief
+    RES="60s"
 
-    gmt nearneighbor $INPUT -R$EXTE -I$RES -G$GRD0 -V -N4/2 -S20k
+    # 8 arc minutes at 45 deg latitude are about 10.5 km 
+    # (see https://opendem.info/arc2meters.html) 
+    gmt nearneighbor $INPUT -R$EXTE -I$RES -G$GRD0 -V -N4/2 -S20k  # This the original option used 
     gmt grdsample $GRD0 -I$RES -R$ext -G$GRDHAZ -r
 
     if $GRADIENT; then
